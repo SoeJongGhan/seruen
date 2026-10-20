@@ -1,0 +1,10 @@
+.env
+.venv/
+__pycache__/
+*.pyc
+data/cache/
+data/demo_accounts.json
+# Видео презентации (~105 МБ) — не для git: выкладывать отдельно (Releases, Диск)
+presentation/*.mp4
+# Документ с кейсами организаторов
+FINAL.docx

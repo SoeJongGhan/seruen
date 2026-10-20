@@ -1,0 +1,11 @@
+requests>=2.31
+python-dotenv>=1.0
+groq>=0.30
+fastapi>=0.110
+uvicorn[standard]>=0.29
+python-multipart>=0.0.9
+# Старое Streamlit-демо (app.py); для основного интерфейса не нужны.
+streamlit>=1.38
+folium>=0.17
+streamlit-folium>=0.22
+streamlit-js-eval>=0.1.7

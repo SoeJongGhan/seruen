@@ -1,0 +1,231 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Seruen — куда сходить в Астане</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='9' fill='%2314704f'/%3E%3Ctext x='16' y='23' font-size='20' text-anchor='middle' fill='white' font-family='sans-serif' font-weight='700'%3Es%3C/text%3E%3C/svg%3E">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Golos+Text:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
+  <link rel="stylesheet" href="/static/style.css">
+  <!-- three.js для 3D-пролёта: модуль city3d.js грузится только по кнопке -->
+  <script type="importmap">
+    { "imports": {
+        "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+        "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/" } }
+  </script>
+</head>
+<body>
+
+<header class="nav">
+  <a class="logo" href="#ask" data-go="ask">seruen</a>
+  <nav class="nav-links">
+    <button data-go="ask">Куда сходить</button>
+    <button data-go="quest">Квест</button>
+    <button data-go="feed">Лента</button>
+    <button data-go="pulse">Пульс города</button>
+    <button data-go="business">Бизнесу</button>
+    <button data-go="admin" id="navAdmin" hidden>Админка</button>
+  </nav>
+  <div class="nav-right">
+    <button class="icon-btn" id="settingsBtn" aria-label="Настройки" title="Настройки">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg>
+    </button>
+    <div id="navAuth" class="nav-auth"></div>
+  </div>
+  <div class="popover nav-pop" id="settingsPop" hidden>
+    <h4>Настройки</h4>
+    <label class="switch"><input type="checkbox" id="demoCheckin">
+      <span>Отмечаться без геолокации<br><span class="muted small">Для показа: «Я здесь» засчитывается, даже если вы далеко.</span></span></label>
+    <button class="opt" id="resetQuest">Сбросить текущий квест</button>
+  </div>
+  <div class="popover nav-pop" id="userPop" hidden>
+    <button class="opt" data-go="profile">Профиль</button>
+    <button class="opt" data-go="business">Для бизнеса</button>
+    <button class="opt" data-go="admin" id="popAdmin" hidden>Админка</button>
+    <button class="opt" id="logoutBtn">Выйти</button>
+  </div>
+</header>
+
+<main class="views">
+  <!-- Куда сходить и Квест: панель слева, карта справа -->
+  <section class="view split" id="view-main">
+    <aside class="panel" id="panel">
+      <div class="context">
+        <button class="chip" id="placeChip">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 21s-7-6.2-7-11a7 7 0 1 1 14 0c0 4.8-7 11-7 11z"/><circle cx="12" cy="10" r="2.5"/></svg>
+          <span id="placeName">Байтерек</span>
+        </button>
+        <button class="chip" id="timeChip">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>
+          <span id="timeLabel">Сейчас</span>
+        </button>
+        <button class="chip" id="weatherChip">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M7 18a5 5 0 1 1 1.6-9.7A6 6 0 0 1 20 11a3.5 3.5 0 0 1-1 7z"/></svg>
+          <span id="weatherLabel">Погода…</span>
+        </button>
+      </div>
+
+      <div class="popover" id="placePop" hidden>
+        <h4>Откуда идём</h4>
+        <button class="opt" id="locateOpt">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/><circle cx="12" cy="12" r="7"/></svg>
+          Моё местоположение
+        </button>
+        <div id="landmarkList"></div>
+        <div class="hint">Или нажмите на карту — точка встанет туда.</div>
+      </div>
+      <div class="popover" id="timePop" hidden>
+        <h4>Когда</h4>
+        <button class="opt" id="nowOpt">Сейчас</button>
+        <div class="row"><input type="datetime-local" id="whenInput" step="900"><button class="btn" id="whenApply">Готово</button></div>
+        <div class="hint">Удобно, чтобы показать, что открыто ночью или в выходной.</div>
+      </div>
+      <div class="popover" id="photoPop" hidden>
+        <h4>Фото</h4>
+        <button class="opt" data-photo="identify"><span><b>Что это за место?</b><br>
+          <span class="muted small">Сфотографируйте здание или памятник — расскажу, что это и что рядом</span></span></button>
+        <button class="opt" data-photo="vibe"><span><b>Найти похожее место</b><br>
+          <span class="muted small">Загрузите картинку с атмосферой, например из Pinterest, — подберу похожее в Астане</span></span></button>
+      </div>
+      <div class="popover" id="weatherPop" hidden>
+        <h4>Погода</h4>
+        <div id="weatherList"></div>
+        <div class="hint">Подстановка погоды — для демонстрации: посмотрите, как меняются советы в мороз или дождь.</div>
+      </div>
+
+      <div class="pane" id="pane-ask">
+        <form class="search" id="askForm">
+          <textarea id="query" rows="1" placeholder="Что ищем? Например, тихое кафе"></textarea>
+          <button type="button" class="icon-btn" id="photoBtn" title="Что это за место? Сфотографируйте" aria-label="Узнать место по фото">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M4 8h3l2-3h6l2 3h3v11H4z"/><circle cx="12" cy="13" r="3.5"/></svg>
+          </button>
+          <input type="file" id="photoInput" accept="image/*" hidden>
+          <button type="button" class="icon-btn" id="micBtn" title="Сказать голосом" aria-label="Сказать голосом">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg>
+          </button>
+          <button type="submit" class="send" id="sendBtn" aria-label="Найти">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+          </button>
+        </form>
+        <div class="examples" id="examples"></div>
+        <details class="refine" id="refine">
+          <summary id="refineSummary">Уточнить</summary>
+          <div class="refine-body">
+            <div><div class="field-label">Как добираться</div><div class="seg" id="modeSeg"></div></div>
+            <div><div class="field-label">Сколько есть времени</div><div class="seg" id="budgetSeg"></div></div>
+            <div><div class="field-label">Сколько вас</div>
+              <div class="stepper"><button type="button" id="groupMinus">−</button><span id="groupLabel">1 человек</span><button type="button" id="groupPlus">+</button></div></div>
+            <div><div class="field-label">Важно</div><div class="toggles" id="needToggles"></div></div>
+          </div>
+        </details>
+        <div id="results"></div>
+      </div>
+
+      <div class="pane" id="pane-quest" hidden></div>
+
+      <footer class="foot" id="foot">Места, часы работы и рейтинги — 2ГИС. Погода — Open-Meteo.</footer>
+    </aside>
+
+    <div class="map-wrap">
+      <div id="map"></div>
+      <button class="map-btn" id="locateBtn" title="Где я" aria-label="Где я">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 11l18-8-8 18-2-8z"/></svg>
+      </button>
+      <div class="map-hint" id="mapHint">Нажмите на карту, чтобы выбрать точку</div>
+    </div>
+  </section>
+
+  <!-- Лента: отдельная страница -->
+  <section class="view page" id="view-feed">
+    <div class="page-inner feed-layout">
+      <div class="feed-col">
+        <div class="feed-top">
+          <h1>Лента</h1>
+          <div class="seg" id="feedSort"></div>
+        </div>
+        <button class="composer-bar" id="composerBar">
+          <span class="ava" id="composerAva">?</span>
+          <span class="muted">Поделитесь местом, которое любите…</span>
+          <span class="btn primary">Поделиться</span>
+        </button>
+        <div id="feedList"></div>
+      </div>
+      <aside class="feed-side">
+        <div class="side-card map-card"><div id="feedMap"></div></div>
+        <div class="side-card"><h3>Чаще всего советуют</h3><div id="topPlaces" class="muted small">Пока пусто</div></div>
+        <div class="side-card small muted">Отзывы проверяются автоматически: без оскорблений, рекламы и личных данных.
+          Если что-то не так — пожалуйтесь через «⋯», после трёх жалоб пост скрывается.</div>
+      </aside>
+    </div>
+  </section>
+
+  <!-- Пульс города: все места в 3D -->
+  <section class="view" id="view-pulse">
+    <div class="pulse-wrap">
+      <div class="pulse-canvas" id="pulseCanvas"></div>
+      <div class="pulse-hud">
+        <h1>Пульс города</h1>
+        <p>Все <span id="pulseTotal">1 634</span> места из каталога 2ГИС. Высота — популярность, цвет — тип места.
+          Двигайте время: город просыпается и засыпает.</p>
+        <div class="pulse-count"><b id="pulseOpen">—</b><span>открыто в это время</span></div>
+        <div class="pulse-meter"><span>Оживлённость</span><div class="meter"><div id="pulseMeter"></div></div><b id="pulseIndex">—</b></div>
+        <div class="pulse-legend" id="pulseLegend"></div>
+        <div class="pulse-layers">
+          <label><input type="checkbox" id="layerFeed" checked> <i class="dot dot-feed"></i> Советуют в ленте</label>
+          <label><input type="checkbox" id="layerOffers" checked> <i class="dot dot-offer"></i> Предложения заведений <b id="offersNow"></b></label>
+        </div>
+        <div class="pulse-hot"><div class="pulse-sub">Где сейчас жизнь</div><ol id="pulseHot"></ol></div>
+        <p class="pulse-note">Оживлённость — оценка по типу места, дню недели и прогнозу погоды, а не реальная загрузка.</p>
+      </div>
+      <div class="pulse-bar">
+        <div class="seg" id="pulseDays"></div>
+        <button class="btn primary" id="pulsePlay">▶ Прожить день</button>
+        <input type="range" id="pulseRange" min="0" max="1425" step="15" aria-label="Время">
+        <b class="pulse-clock" id="pulseClock">12:00</b>
+        <span class="pulse-weather" id="pulseWeather"></span>
+        <button class="linkbtn" id="pulseNow">Сейчас</button>
+      </div>
+      <div class="pulse-tip" id="pulseTip" hidden></div>
+      <div class="pulse-card" id="pulseCard" hidden></div>
+      <div class="pulse-loading" id="pulseLoading">Загружаю город…</div>
+    </div>
+  </section>
+
+  <!-- Seruen для бизнеса -->
+  <section class="view page" id="view-business">
+    <div class="page-inner narrow" id="bizRoot"></div>
+  </section>
+
+  <!-- Панель администратора: видна только админу -->
+  <section class="view page" id="view-admin">
+    <div class="page-inner" id="adminRoot"></div>
+  </section>
+
+  <!-- Профиль: отдельная страница -->
+  <section class="view page" id="view-profile">
+    <div class="page-inner narrow" id="profileRoot"></div>
+  </section>
+</main>
+
+<!-- Нижняя навигация на телефоне -->
+<nav class="bottom-bar">
+  <button data-go="ask"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 21s-7-6.2-7-11a7 7 0 1 1 14 0c0 4.8-7 11-7 11z"/><circle cx="12" cy="10" r="2.5"/></svg>Рядом</button>
+  <button data-go="quest"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 21V4h11l-1.5 4L15 12H4"/></svg>Квест</button>
+  <button data-go="feed"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20s-7-4.4-9.2-8.6C1.3 8.4 3 5 6.4 5c2 0 3.3 1.1 4 2.2.6-1.1 2-2.2 4-2.2C17.8 5 19.6 8.4 18 11.4 16 15.6 12 20 12 20z"/></svg>Лента</button>
+  <button data-go="pulse"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 20V12M10 20V6M15 20v-9M20 20V9"/></svg>Пульс</button>
+  <button data-go="profile"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="4"/><path d="M4 21c1.5-4 4.5-6 8-6s6.5 2 8 6"/></svg>Профиль</button>
+</nav>
+
+<div class="sheet-backdrop" id="whyBackdrop" hidden><div class="sheet" role="dialog" aria-modal="true" id="whySheet"></div></div>
+<div class="sheet-backdrop" id="shareBackdrop" hidden><div class="sheet" role="dialog" aria-modal="true" id="shareSheet"></div></div>
+<div class="sheet-backdrop" id="authBackdrop" hidden><div class="sheet auth-sheet" role="dialog" aria-modal="true" id="authSheet"></div></div>
+<input type="file" id="questPhotoInput" accept="image/*" capture="environment" hidden>
+<div class="toast" id="toast" hidden></div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<script src="/static/app.js"></script>
+</body>
+</html>
